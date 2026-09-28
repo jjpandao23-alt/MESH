@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { BottomTabs, TabType } from './components/BottomTabs';
 import { DirectMessagesScreen } from './screens/DirectMessagesScreen';
@@ -8,10 +8,19 @@ import { ActivityScreen } from './screens/ActivityScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { BroadcastScreen } from './screens/BroadcastScreen';
 import { User } from './db/schema';
+import { peerDiscoveryService } from './mesh/PeerDiscoveryService';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabType>('messages');
   const [selectedPeer, setSelectedPeer] = useState<User | null>(null);
+
+  useEffect(() => {
+    // Start continuous peer discovery beacon & presence sync
+    peerDiscoveryService.startAutoDiscoveryBeacon();
+    return () => {
+      peerDiscoveryService.stopAutoDiscoveryBeacon();
+    };
+  }, []);
 
   const handleSelectPeer = (peer: User) => {
     setSelectedPeer(peer);

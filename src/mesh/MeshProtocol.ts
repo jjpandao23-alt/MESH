@@ -1,4 +1,4 @@
-import { MeshPacket, PacketType } from './types';
+import { MeshPacket } from './types';
 import { db } from '../db/storage';
 import { Message, User } from '../db/schema';
 
@@ -8,9 +8,6 @@ export class MeshProtocol {
 
   constructor() {}
 
-  /**
-   * Create a new message packet ready to be sent across the mesh
-   */
   createMessagePacket(
     receiverId: string,
     text: string,
@@ -53,15 +50,10 @@ export class MeshProtocol {
       isDirect,
     };
 
-    // Mark as seen locally
     this.seenPacketIds.add(packetId);
-
     return { packet, messageRecord };
   }
 
-  /**
-   * Ingest and route an incoming packet from BLE or Wi-Fi Direct interface
-   */
   handleIncomingPacket(packet: MeshPacket, currentNodeId: string): { action: 'ACCEPTED' | 'RELAYED' | 'DROPPED'; packet: MeshPacket } {
     // 1. Loop Prevention: Drop if already seen
     if (this.seenPacketIds.has(packet.packetId)) {
@@ -80,18 +72,62 @@ export class MeshProtocol {
       return { action: 'DROPPED', packet };
     }
 
-    // 3. Destination Reached!
-    if (packet.destNodeId === currentNodeId) {
+    // 3. Auto Register/Update Peer Discovery on any incoming packet (Handshake or Message)
+    if (packet.sourceNodeId && packet.sourceNodeId !== currentNodeId) {
+      let extraData: any = {};
+      try {
+        if (packet.type === 'HANDSHAKE' && packet.payload) {
+          extraData = JSON.parse(packet.payload);
+        }
+      } catch (e) {}
+
+      const existingUser = db.getUser(packet.sourceNodeId);
+      const calculatedHops = Math.max(1, packet.hopCount);
+
+      if (existingUser) {
+        db.saveUser({
+          ...existingUser,
+          hopCount: calculatedHops,
+          isDirect: calculatedHops === 1,
+          status: calculatedHops === 1 ? 'online' : 'mesh',
+          lastSeen: Date.now(),
+        });
+      } else {
+        db.saveUser({
+          id: packet.sourceNodeId,
+          name: packet.senderName || `MESH User (${packet.sourceNodeId.substring(0, 4)})`,
+          handle: packet.senderHandle || `user_${packet.sourceNodeId.substring(0, 4)}`,
+          avatar: extraData.avatar || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80`,
+          publicKey: extraData.publicKey || `pub_pk_${packet.sourceNodeId.substring(0, 6)}`,
+          isDirect: calculatedHops === 1,
+          hopCount: calculatedHops,
+          status: calculatedHops === 1 ? 'online' : 'mesh',
+          lastSeen: Date.now(),
+          bio: extraData.bio || 'Discovered MESH peer',
+        });
+
+        db.addLog({
+          level: 'success',
+          action: 'NEW_MESH_PEER_DISCOVERED',
+          details: `Automatically connected to new MESH user [${packet.senderName}] (${calculatedHops} Hops)`,
+          nodeSource: packet.sourceNodeId,
+        });
+      }
+    }
+
+    // 4. Handle Broadcast / Destination Reached
+    const isTargetForMe = packet.destNodeId === currentNodeId || packet.destNodeId === 'BROADCAST';
+
+    if (isTargetForMe) {
       db.addLog({
         level: 'success',
         action: 'PACKET_DELIVERED',
-        details: `Packet ${packet.packetId.substring(0, 8)} reached destination after ${packet.hopCount} hops via [${packet.path.join(' ➔ ')}]`,
+        details: `Packet ${packet.packetId.substring(0, 8)} (${packet.type}) received from [${packet.senderName}] (${packet.hopCount} Hops)`,
         packetId: packet.packetId,
         nodeSource: packet.sourceNodeId,
         nodeDest: currentNodeId,
       });
 
-      // Update message delivery in DB if local message
       if (packet.type === 'TEXT_MSG') {
         const incomingMsg: Message = {
           id: packet.packetId,
@@ -107,36 +143,14 @@ export class MeshProtocol {
           viaNodeId: packet.path.length > 2 ? packet.path[packet.path.length - 2] : undefined,
         };
         db.saveMessage(incomingMsg);
-
-        // Ensure user exists or update hop distance
-        let senderUser = db.getUser(packet.sourceNodeId);
-        if (senderUser) {
-          db.saveUser({
-            ...senderUser,
-            hopCount: packet.hopCount,
-            isDirect: packet.hopCount === 1,
-            status: packet.hopCount === 1 ? 'online' : 'mesh',
-            lastSeen: Date.now(),
-          });
-        } else {
-          db.saveUser({
-            id: packet.sourceNodeId,
-            name: packet.senderName,
-            handle: packet.senderHandle,
-            avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80`,
-            publicKey: `pub_pk_${packet.sourceNodeId.substring(0, 6)}`,
-            isDirect: packet.hopCount === 1,
-            hopCount: packet.hopCount,
-            status: packet.hopCount === 1 ? 'online' : 'mesh',
-            lastSeen: Date.now(),
-          });
-        }
       }
 
-      return { action: 'ACCEPTED', packet };
+      if (packet.destNodeId !== 'BROADCAST') {
+        return { action: 'ACCEPTED', packet };
+      }
     }
 
-    // 4. TTL Check
+    // 5. TTL Check
     if (packet.ttl <= 1) {
       db.addLog({
         level: 'warn',
@@ -147,7 +161,7 @@ export class MeshProtocol {
       return { action: 'DROPPED', packet };
     }
 
-    // 5. Silent Relay Forwarding
+    // 6. Silent Multi-Hop Relay Forwarding across mesh network
     const relayedPacket: MeshPacket = {
       ...packet,
       ttl: packet.ttl - 1,
