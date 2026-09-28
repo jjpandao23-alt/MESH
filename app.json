@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Anti Gravity",
+    "slug": "anti-gravity-mesh",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0b0e14"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.antigravity.mesh",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Anti Gravity requires Bluetooth access to discover and send off-grid messages to nearby peer devices without internet or cellular network.",
+        "NSBluetoothPeripheralUsageDescription": "Anti Gravity advertises Bluetooth Low Energy signals so nearby devices can relay mesh messages to you off-grid.",
+        "NSLocalNetworkUsageDescription": "Anti Gravity uses local Wi-Fi Direct peer-to-peer connections for high-speed off-grid data transfer.",
+        "UIBackgroundModes": [
+          "bluetooth-central",
+          "bluetooth-peripheral"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.antigravity.mesh",
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_ADVERTISE",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CHANGE_WIFI_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.NEARBY_WIFI_DEVICES"
+      ]
+    },
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": [
+            "peripheral",
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "Anti Gravity requires Bluetooth access to connect to nearby physical mesh peers."
+        }
+      ]
+    ]
+  }
+}
