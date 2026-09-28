@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Radio, Shield, Sparkles, CheckCircle } from 'lucide-react';
+import { Send, Radio, Shield, CheckCircle } from 'lucide-react';
 import { db } from '../db/storage';
 import { meshProtocol } from '../mesh/MeshProtocol';
 import { nativeBridge } from '../mesh/NativeBridge';
@@ -18,7 +18,6 @@ export const BroadcastScreen: React.FC<BroadcastScreenProps> = ({ onClose }) => 
     if (!broadcastText.trim()) return;
     setIsTransmitting(true);
 
-    // Send packet to all known peers in parallel
     for (const peer of users) {
       const { packet } = meshProtocol.createMessagePacket(peer.id, `📢 [Mesh Broadcast] ${broadcastText}`);
       await nativeBridge.sendPacket(packet);
@@ -32,44 +31,44 @@ export const BroadcastScreen: React.FC<BroadcastScreenProps> = ({ onClose }) => 
   };
 
   return (
-    <div className="pb-24 pt-4 px-4 max-w-md mx-auto min-h-screen text-white">
-      <div className="bg-[#161b22] border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-0.5 flex items-center justify-center">
-            <Radio className="w-5 h-5 text-white" />
+    <div className="pb-24 pt-4 px-4 max-w-2xl mx-auto text-white">
+      <div className="bg-[#ff007f] text-black border-4 border-black p-5 shadow-[8px_8px_0px_0px_#000000] space-y-4">
+        <div className="flex items-center space-x-3 bg-white p-3 border-3 border-black shadow-[3px_3px_0px_0px_#000000]">
+          <div className="w-10 h-10 bg-[#ffe600] border-2 border-black flex items-center justify-center">
+            <Radio className="w-6 h-6 stroke-[3px] text-black" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-gray-100">Broadcast to Mesh Network</h2>
-            <p className="text-xs text-gray-400">Floods encrypted payload to all nearby & multi-hop nodes</p>
+            <h2 className="text-sm font-black uppercase">Broadcast to Mesh Network</h2>
+            <p className="text-xs font-bold text-gray-800">Floods encrypted message to all nearby & multi-hop nodes</p>
           </div>
         </div>
 
         <textarea
           rows={4}
-          placeholder="Type an off-grid emergency or general announcement to all mesh peers..."
+          placeholder="TYPE AN EMERGENCY OR GENERAL ANNOUNCEMENT TO ALL MESH PEERS..."
           value={broadcastText}
           onChange={(e) => setBroadcastText(e.target.value)}
-          className="w-full bg-[#0b0e14] border border-white/10 text-gray-100 placeholder-gray-500 rounded-xl p-3 text-xs focus:outline-none focus:border-pink-500/50"
+          className="w-full bg-white text-black font-extrabold border-3 border-black p-3 text-xs shadow-[3px_3px_0px_0px_#000000] focus:outline-none focus:bg-[#ffe600]"
         />
 
-        <div className="flex items-center justify-between text-[11px] text-gray-400">
+        <div className="flex items-center justify-between text-xs font-black uppercase bg-[#00f0ff] text-black p-2 border-2 border-black">
           <span className="flex items-center gap-1">
-            <Shield className="w-3.5 h-3.5 text-pink-400" />
+            <Shield className="w-4 h-4 stroke-[3px]" />
             Targeting {users.length} Active Nodes
           </span>
-          <span className="text-pink-300 font-medium">Flooding Protocol Active</span>
+          <span className="bg-black text-white px-2 py-0.5">FLOODING PROTOCOL</span>
         </div>
 
         {transmitted ? (
-          <div className="p-3 bg-emerald-950/60 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-semibold flex items-center justify-center space-x-2">
-            <CheckCircle className="w-4 h-4" />
+          <div className="p-3 bg-[#00ff66] border-3 border-black text-black text-xs font-black uppercase flex items-center justify-center space-x-2 shadow-[4px_4px_0px_0px_#000000]">
+            <CheckCircle className="w-5 h-5 stroke-[3px]" />
             <span>Broadcast Packet Transmitted to All Mesh Neighbors!</span>
           </div>
         ) : (
           <div className="flex items-center space-x-3">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-semibold transition-colors"
+              className="flex-1 py-3 bg-white border-3 border-black text-black text-xs font-black uppercase shadow-[3px_3px_0px_0px_#000000] hover:bg-gray-100 transition-colors"
             >
               Cancel
             </button>
@@ -77,13 +76,13 @@ export const BroadcastScreen: React.FC<BroadcastScreenProps> = ({ onClose }) => 
             <button
               onClick={handleSendBroadcast}
               disabled={!broadcastText.trim() || isTransmitting}
-              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:opacity-90 disabled:opacity-40 text-white text-xs font-semibold flex items-center justify-center space-x-2 transition-transform active:scale-95"
+              className="flex-1 py-3 bg-[#ffe600] disabled:opacity-50 border-3 border-black text-black text-xs font-black uppercase shadow-[3px_3px_0px_0px_#000000] hover:bg-[#00ff66] transition-transform active:translate-x-1 flex items-center justify-center space-x-2"
             >
               {isTransmitting ? (
                 <span>Transmitting...</span>
               ) : (
                 <>
-                  <Send className="w-3.5 h-3.5" />
+                  <Send className="w-4 h-4 stroke-[3px]" />
                   <span>Transmit Broadcast</span>
                 </>
               )}

@@ -5,7 +5,58 @@
 @layer base {
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
   }
+}
+
+/* Neo-Brutalism Core Utilities */
+.neo-box {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px 0px #000000;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.neo-box-pink {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px 0px #ff007f;
+}
+
+.neo-box-yellow {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px 0px #ffe600;
+}
+
+.neo-box-cyan {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px 0px #00f0ff;
+}
+
+.neo-btn {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px 0px #000000;
+  font-weight: 700;
+  text-transform: uppercase;
+  transition: all 0.1s ease;
+  cursor: pointer;
+}
+
+.neo-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px #000000;
+}
+
+.neo-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px #000000;
+}
+
+.neo-badge {
+  border: 2px solid #000000;
+  box-shadow: 2px 2px 0px 0px #000000;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 /* Instagram Cursive Font Header */
@@ -13,58 +64,22 @@
   font-family: 'Grand Hotel', 'Pacifico', cursive;
 }
 
-/* Instagram Gradient Avatar Ring */
-.ig-gradient-ring {
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-  padding: 2px;
-}
-
-/* Glassmorphism utility */
-.glass-panel {
-  background: rgba(22, 27, 34, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-panel-light {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-/* Custom scrollbars */
+/* Custom scrollbars for desktop & mobile */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #121212;
+  border-left: 2px solid #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 9999px;
+  background: #ffe600;
+  border: 2px solid #000000;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Pulse Glow Animation */
-@keyframes pulseGlow {
-  0%, 100% {
-    box-shadow: 0 0 8px #e1306c, 0 0 16px rgba(225, 48, 108, 0.4);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 16px #fd1d1d, 0 0 24px rgba(253, 29, 29, 0.7);
-    transform: scale(1.1);
-  }
-}
-
-.animate-mesh-active {
-  animation: pulseGlow 2s ease-in-out infinite;
+  background: #ff007f;
 }

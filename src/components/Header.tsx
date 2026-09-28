@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Radio, ChevronDown, Shield, Sun, Moon, RefreshCw } from 'lucide-react';
+import { ChevronDown, Sun, Moon, Radio, ShieldAlert } from 'lucide-react';
 import { db } from '../db/storage';
 import { meshSimulator } from '../mesh/MeshSimulator';
 
-interface HeaderProps {
-  onOpenTopology?: () => void;
-}
-
-export const Header: React.FC<HeaderProps> = ({ onOpenTopology }) => {
+export const Header: React.FC = () => {
   const [settings, setSettings] = useState(db.getSettings());
   const [activeNodeId, setActiveNodeId] = useState(meshSimulator.getActiveNodeId());
   const [isNodeMenuOpen, setIsNodeMenuOpen] = useState(false);
@@ -34,80 +30,74 @@ export const Header: React.FC<HeaderProps> = ({ onOpenTopology }) => {
   const simNodes = meshSimulator.getNodes();
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0b0e14]/90 backdrop-blur-md border-b border-white/10 text-white px-4 py-3 flex items-center justify-between shadow-md">
-      {/* Cursive Instagram-Style Logo */}
-      <div className="flex items-center space-x-3">
-        <h1 className="font-logo text-3xl tracking-wide bg-gradient-to-r from-pink-500 via-purple-400 to-yellow-400 bg-clip-text text-transparent select-none cursor-pointer">
-          Anti Gravity
-        </h1>
-        <span className="text-[10px] font-semibold tracking-wider uppercase bg-purple-950/80 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full">
-          Off-Grid Mesh
-        </span>
-      </div>
-
-      {/* Right Action Icons & Mesh Active Status Indicator */}
-      <div className="flex items-center space-x-3">
-        {/* Node Simulator View Selector */}
-        <div className="relative">
-          <button
-            onClick={() => setIsNodeMenuOpen(!isNodeMenuOpen)}
-            className="flex items-center space-x-1.5 bg-white/5 hover:bg-white/10 text-xs px-2.5 py-1.5 rounded-lg border border-white/10 transition-colors"
-            title="Switch Simulated View Perspective"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-medium text-gray-200 hidden sm:inline">
-              Node: {settings.nodeName.split(' ')[0]}
-            </span>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-          </button>
-
-          {isNodeMenuOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-[#161b22] border border-white/10 rounded-xl shadow-2xl z-50 p-1.5 space-y-1">
-              <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-gray-400 border-b border-white/10">
-                Simulated Node Viewpoint
-              </div>
-              {simNodes.map((node) => (
-                <button
-                  key={node.id}
-                  onClick={() => {
-                    meshSimulator.setActiveNodeId(node.id);
-                    setIsNodeMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-left text-xs transition-colors ${
-                    activeNodeId === node.id
-                      ? 'bg-purple-600/30 text-purple-200 font-semibold border border-purple-500/40'
-                      : 'hover:bg-white/5 text-gray-300'
-                  }`}
-                >
-                  <img src={node.avatar} alt={node.name} className="w-6 h-6 rounded-full object-cover" />
-                  <div className="flex-1 truncate">
-                    <p className="truncate">{node.name}</p>
-                    <p className="text-[10px] text-gray-400">@{node.handle}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Mesh Active Top-Right Pulsing Status Dot */}
-        <div className="flex items-center space-x-2 bg-gradient-to-r from-purple-950/60 to-pink-950/60 border border-pink-500/30 px-3 py-1 rounded-full">
-          <div className="relative flex items-center justify-center">
-            <span className="w-2.5 h-2.5 rounded-full bg-pink-500 animate-mesh-active" />
+    <header className="sticky top-0 z-40 bg-[#ffe600] border-b-4 border-black text-black px-4 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        {/* Brand & Cursive Logo */}
+        <div className="flex items-center space-x-3">
+          <div className="bg-black text-[#ffe600] px-3 py-1 border-2 border-black font-black uppercase text-xs tracking-wider shadow-[2px_2px_0px_0px_#ff007f] rotate-[-1deg]">
+            P2P MESH
           </div>
-          <span className="text-xs font-semibold tracking-wide bg-gradient-to-r from-yellow-300 via-pink-300 to-purple-300 bg-clip-text text-transparent hidden md:inline">
-            Mesh Active
-          </span>
+          <h1 className="font-logo text-3xl md:text-4xl font-bold tracking-wide text-black select-none cursor-pointer">
+            Anti Gravity
+          </h1>
         </div>
 
-        {/* Theme Toggle Button */}
-        <button
-          onClick={toggleDarkMode}
-          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
-          title="Toggle Theme"
-        >
-          {settings.darkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-purple-300" />}
-        </button>
+        {/* Right Action Controls */}
+        <div className="flex items-center space-x-3">
+          {/* Node Simulator Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setIsNodeMenuOpen(!isNodeMenuOpen)}
+              className="flex items-center space-x-2 bg-white text-black text-xs font-black px-3 py-1.5 border-3 border-black shadow-[3px_3px_0px_0px_#000000] hover:bg-[#00f0ff] transition-colors"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-[#00ff66] border border-black animate-pulse" />
+              <span>NODE: {settings.nodeName.split(' ')[0]}</span>
+              <ChevronDown className="w-4 h-4 stroke-[3px]" />
+            </button>
+
+            {isNodeMenuOpen && (
+              <div className="absolute right-0 mt-2 w-60 bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000000] z-50 p-2 space-y-1">
+                <div className="px-2 py-1 text-[10px] uppercase font-black bg-black text-white mb-1">
+                  Perspective Node Switcher
+                </div>
+                {simNodes.map((node) => (
+                  <button
+                    key={node.id}
+                    onClick={() => {
+                      meshSimulator.setActiveNodeId(node.id);
+                      setIsNodeMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-2 px-2.5 py-2 border-2 border-black font-bold text-xs text-left transition-transform active:translate-x-1 ${
+                      activeNodeId === node.id
+                        ? 'bg-[#ff007f] text-white shadow-[2px_2px_0px_0px_#000000]'
+                        : 'bg-gray-100 hover:bg-[#ffe600] text-black'
+                    }`}
+                  >
+                    <img src={node.avatar} alt={node.name} className="w-6 h-6 rounded-full border border-black object-cover" />
+                    <div className="flex-1 truncate">
+                      <p className="truncate font-extrabold">{node.name}</p>
+                      <p className="text-[10px] opacity-80">@{node.handle}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Mesh Active Pulsing Status Badge */}
+          <div className="flex items-center space-x-2 bg-[#ff007f] text-white text-xs font-black px-3 py-1.5 border-3 border-black shadow-[3px_3px_0px_0px_#000000]">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00ff66] border border-black animate-ping" />
+            <span className="tracking-wider uppercase">Mesh Active</span>
+          </div>
+
+          {/* Dark / Light Toggle */}
+          <button
+            onClick={toggleDarkMode}
+            className="p-1.5 bg-white border-3 border-black text-black shadow-[3px_3px_0px_0px_#000000] hover:bg-[#00f0ff] transition-colors"
+          >
+            {settings.darkMode ? <Sun className="w-4 h-4 stroke-[3px]" /> : <Moon className="w-4 h-4 stroke-[3px]" />}
+          </button>
+        </div>
       </div>
     </header>
   );
