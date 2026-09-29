@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Sun, Moon, Radio, ShieldAlert } from 'lucide-react';
+import { ChevronDown, Sun, Moon, Radio, Zap, Globe } from 'lucide-react';
 import { db } from '../db/storage';
 import { meshSimulator } from '../mesh/MeshSimulator';
+import { multiDeviceMeshTransport } from '../mesh/MultiDeviceMeshTransport';
 
 export const Header: React.FC = () => {
   const [settings, setSettings] = useState(db.getSettings());
   const [activeNodeId, setActiveNodeId] = useState(meshSimulator.getActiveNodeId());
   const [isNodeMenuOpen, setIsNodeMenuOpen] = useState(false);
+  const [peerCount, setPeerCount] = useState(multiDeviceMeshTransport.getConnectedPeerCount());
 
   useEffect(() => {
-    const unsubDb = db.subscribe(() => setSettings(db.getSettings()));
+    const unsubDb = db.subscribe(() => {
+      setSettings(db.getSettings());
+      setPeerCount(multiDeviceMeshTransport.getConnectedPeerCount());
+    });
     const unsubSim = meshSimulator.subscribe(() => setActiveNodeId(meshSimulator.getActiveNodeId()));
+    const unsubTransport = multiDeviceMeshTransport.subscribe(() => setPeerCount(multiDeviceMeshTransport.getConnectedPeerCount()));
     return () => {
       unsubDb();
       unsubSim();
+      unsubTransport();
     };
   }, []);
 
@@ -27,36 +34,52 @@ export const Header: React.FC = () => {
     }
   };
 
+  const handle1ClickAutoConnect = async () => {
+    await multiDeviceMeshTransport.autoConnectToMesh();
+  };
+
   const simNodes = meshSimulator.getNodes();
 
   return (
-    <header className="sticky top-0 z-40 bg-[#ffe600] border-b-4 border-black text-black px-4 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-[#ffe600] border-b-4 border-black text-black px-3 py-2.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
         {/* Brand & Cursive Logo */}
-        <div className="flex items-center space-x-3">
-          <div className="bg-black text-[#ffe600] px-3 py-1 border-2 border-black font-black uppercase text-xs tracking-wider shadow-[2px_2px_0px_0px_#ff007f] rotate-[-1deg]">
-            P2P MESH
+        <div className="flex items-center space-x-2 shrink-0">
+          <div className="bg-black text-[#ffe600] px-2.5 py-0.5 border-2 border-black font-black uppercase text-[10px] sm:text-xs tracking-wider shadow-[2px_2px_0px_0px_#ff007f]">
+            OFF-GRID MESH
           </div>
-          <h1 className="font-logo text-3xl md:text-4xl font-bold tracking-wide text-black select-none cursor-pointer">
+          <h1 className="font-logo text-2xl sm:text-3xl font-bold text-black select-none">
             Anti Gravity
           </h1>
         </div>
 
+        {/* Center 1-Click Auto-Connect Mesh Button */}
+        <button
+          onClick={handle1ClickAutoConnect}
+          className="flex items-center space-x-1.5 bg-[#ff007f] text-white text-xs font-black px-3 py-1.5 border-3 border-black shadow-[3px_3px_0px_0px_#000000] hover:bg-[#00ff66] hover:text-black transition-all active:translate-x-0.5 shrink-0"
+        >
+          <Globe className="w-4 h-4 stroke-[3px]" />
+          <span className="uppercase">AUTO-CONNECT MESH</span>
+          <span className="bg-black text-[#ffe600] text-[10px] px-1.5 py-0.5 border border-black font-extrabold ml-1">
+            {peerCount} DEVS
+          </span>
+        </button>
+
         {/* Right Action Controls */}
-        <div className="flex items-center space-x-3">
-          {/* Node Simulator Selector */}
+        <div className="flex items-center space-x-2 shrink-0">
+          {/* Node Selector */}
           <div className="relative">
             <button
               onClick={() => setIsNodeMenuOpen(!isNodeMenuOpen)}
-              className="flex items-center space-x-2 bg-white text-black text-xs font-black px-3 py-1.5 border-3 border-black shadow-[3px_3px_0px_0px_#000000] hover:bg-[#00f0ff] transition-colors"
+              className="flex items-center space-x-1 bg-white text-black text-[11px] font-black px-2.5 py-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000000] hover:bg-[#00f0ff] transition-colors"
             >
-              <span className="w-2.5 h-2.5 rounded-full bg-[#00ff66] border border-black animate-pulse" />
-              <span>NODE: {settings.nodeName.split(' ')[0]}</span>
-              <ChevronDown className="w-4 h-4 stroke-[3px]" />
+              <span className="w-2 h-2 rounded-full bg-[#00ff66] border border-black animate-pulse" />
+              <span className="hidden md:inline">NODE: {settings.nodeName.split(' ')[0]}</span>
+              <ChevronDown className="w-3.5 h-3.5 stroke-[3px]" />
             </button>
 
             {isNodeMenuOpen && (
-              <div className="absolute right-0 mt-2 w-60 bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000000] z-50 p-2 space-y-1">
+              <div className="absolute right-0 mt-2 w-56 bg-white border-3 border-black shadow-[5px_5px_0px_0px_#000000] z-50 p-2 space-y-1">
                 <div className="px-2 py-1 text-[10px] uppercase font-black bg-black text-white mb-1">
                   Perspective Node Switcher
                 </div>
@@ -67,16 +90,15 @@ export const Header: React.FC = () => {
                       meshSimulator.setActiveNodeId(node.id);
                       setIsNodeMenuOpen(false);
                     }}
-                    className={`w-full flex items-center space-x-2 px-2.5 py-2 border-2 border-black font-bold text-xs text-left transition-transform active:translate-x-1 ${
+                    className={`w-full flex items-center space-x-2 px-2 py-1.5 border-2 border-black font-bold text-xs text-left transition-transform active:translate-x-1 ${
                       activeNodeId === node.id
                         ? 'bg-[#ff007f] text-white shadow-[2px_2px_0px_0px_#000000]'
                         : 'bg-gray-100 hover:bg-[#ffe600] text-black'
                     }`}
                   >
-                    <img src={node.avatar} alt={node.name} className="w-6 h-6 rounded-full border border-black object-cover" />
+                    <img src={node.avatar} alt={node.name} className="w-5 h-5 rounded-full border border-black object-cover" />
                     <div className="flex-1 truncate">
-                      <p className="truncate font-extrabold">{node.name}</p>
-                      <p className="text-[10px] opacity-80">@{node.handle}</p>
+                      <p className="truncate font-extrabold text-[11px]">{node.name}</p>
                     </div>
                   </button>
                 ))}
@@ -84,16 +106,10 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Mesh Active Pulsing Status Badge */}
-          <div className="flex items-center space-x-2 bg-[#ff007f] text-white text-xs font-black px-3 py-1.5 border-3 border-black shadow-[3px_3px_0px_0px_#000000]">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#00ff66] border border-black animate-ping" />
-            <span className="tracking-wider uppercase">Mesh Active</span>
-          </div>
-
           {/* Dark / Light Toggle */}
           <button
             onClick={toggleDarkMode}
-            className="p-1.5 bg-white border-3 border-black text-black shadow-[3px_3px_0px_0px_#000000] hover:bg-[#00f0ff] transition-colors"
+            className="p-1.5 bg-white border-2 border-black text-black shadow-[2px_2px_0px_0px_#000000] hover:bg-[#00f0ff] transition-colors"
           >
             {settings.darkMode ? <Sun className="w-4 h-4 stroke-[3px]" /> : <Moon className="w-4 h-4 stroke-[3px]" />}
           </button>
