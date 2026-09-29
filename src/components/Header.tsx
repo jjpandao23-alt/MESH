@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Sun, Moon, Radio, Zap, Globe } from 'lucide-react';
+import { ChevronDown, Sun, Moon, Globe, Key } from 'lucide-react';
 import { db } from '../db/storage';
 import { meshSimulator } from '../mesh/MeshSimulator';
-import { multiDeviceMeshTransport } from '../mesh/MultiDeviceMeshTransport';
+import { peerJSMeshDriver } from '../mesh/PeerJSMeshDriver';
 
 export const Header: React.FC = () => {
   const [settings, setSettings] = useState(db.getSettings());
   const [activeNodeId, setActiveNodeId] = useState(meshSimulator.getActiveNodeId());
   const [isNodeMenuOpen, setIsNodeMenuOpen] = useState(false);
-  const [peerCount, setPeerCount] = useState(multiDeviceMeshTransport.getConnectedPeerCount());
+  const [peerCount, setPeerCount] = useState(peerJSMeshDriver.getConnectedPeerCount());
+  const [roomCode, setRoomCode] = useState(peerJSMeshDriver.getRoomCode());
+  const [isChangingRoom, setIsChangingRoom] = useState(false);
+  const [inputRoomCode, setInputRoomCode] = useState(roomCode);
 
   useEffect(() => {
-    const unsubDb = db.subscribe(() => {
-      setSettings(db.getSettings());
-      setPeerCount(multiDeviceMeshTransport.getConnectedPeerCount());
-    });
+    const unsubDb = db.subscribe(() => setSettings(db.getSettings()));
     const unsubSim = meshSimulator.subscribe(() => setActiveNodeId(meshSimulator.getActiveNodeId()));
-    const unsubTransport = multiDeviceMeshTransport.subscribe(() => setPeerCount(multiDeviceMeshTransport.getConnectedPeerCount()));
+    const unsubPeerJS = peerJSMeshDriver.subscribe(() => {
+      setPeerCount(peerJSMeshDriver.getConnectedPeerCount());
+      setRoomCode(peerJSMeshDriver.getRoomCode());
+    });
     return () => {
       unsubDb();
       unsubSim();
-      unsubTransport();
+      unsubPeerJS();
     };
   }, []);
 
@@ -34,8 +37,12 @@ export const Header: React.FC = () => {
     }
   };
 
-  const handle1ClickAutoConnect = async () => {
-    await multiDeviceMeshTransport.autoConnectToMesh();
+  const handleJoinRoomSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputRoomCode.trim()) {
+      peerJSMeshDriver.initPeerJS(inputRoomCode);
+      setIsChangingRoom(false);
+    }
   };
 
   const simNodes = meshSimulator.getNodes();
@@ -53,21 +60,40 @@ export const Header: React.FC = () => {
           </h1>
         </div>
 
-        {/* Center 1-Click Auto-Connect Mesh Button */}
-        <button
-          onClick={handle1ClickAutoConnect}
-          className="flex items-center space-x-1.5 bg-[#ff007f] text-white text-xs font-black px-3 py-1.5 border-3 border-black shadow-[3px_3px_0px_0px_#000000] hover:bg-[#00ff66] hover:text-black transition-all active:translate-x-0.5 shrink-0"
-        >
-          <Globe className="w-4 h-4 stroke-[3px]" />
-          <span className="uppercase">AUTO-CONNECT MESH</span>
-          <span className="bg-black text-[#ffe600] text-[10px] px-1.5 py-0.5 border border-black font-extrabold ml-1">
-            {peerCount} DEVS
-          </span>
-        </button>
+        {/* Room Code Selector / PeerJS Status */}
+        <div className="flex items-center space-x-2 shrink-0">
+          {isChangingRoom ? (
+            <form onSubmit={handleJoinRoomSubmit} className="flex items-center space-x-1">
+              <input
+                type="text"
+                value={inputRoomCode}
+                onChange={(e) => setInputRoomCode(e.target.value)}
+                placeholder="ROOM CODE"
+                className="bg-white text-black font-black text-xs px-2 py-1 border-2 border-black w-24 uppercase"
+              />
+              <button
+                type="submit"
+                className="bg-[#00ff66] text-black font-black text-xs px-2 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_0px_#000000]"
+              >
+                JOIN
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => setIsChangingRoom(true)}
+              className="flex items-center space-x-1.5 bg-[#ff007f] text-white text-xs font-black px-3 py-1.5 border-3 border-black shadow-[3px_3px_0px_0px_#000000] hover:bg-[#00ff66] hover:text-black transition-all active:translate-x-0.5"
+            >
+              <Globe className="w-4 h-4 stroke-[3px]" />
+              <span className="uppercase">ROOM: {roomCode}</span>
+              <span className="bg-black text-[#ffe600] text-[10px] px-1.5 py-0.5 border border-black font-extrabold ml-1">
+                {peerCount} PEERS
+              </span>
+            </button>
+          )}
+        </div>
 
         {/* Right Action Controls */}
         <div className="flex items-center space-x-2 shrink-0">
-          {/* Node Selector */}
           <div className="relative">
             <button
               onClick={() => setIsNodeMenuOpen(!isNodeMenuOpen)}
@@ -106,7 +132,6 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Dark / Light Toggle */}
           <button
             onClick={toggleDarkMode}
             className="p-1.5 bg-white border-2 border-black text-black shadow-[2px_2px_0px_0px_#000000] hover:bg-[#00f0ff] transition-colors"

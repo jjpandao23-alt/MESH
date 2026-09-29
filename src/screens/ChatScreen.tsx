@@ -15,7 +15,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ peer, onBack, isEmbedded
   const [messages, setMessages] = useState<Message[]>(db.getMessages(peer.id));
   const [inputText, setInputText] = useState('');
   const [sendingStatusText, setSendingStatusText] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const settings = db.getSettings();
 
   useEffect(() => {
@@ -25,8 +25,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ peer, onBack, isEmbedded
     return () => unsub();
   }, [peer.id]);
 
+  // Container-scoped DOM scroll (Fixes window page drag bug!)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -34,7 +37,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ peer, onBack, isEmbedded
     if (!payload.trim()) return;
 
     setInputText('');
-    setSendingStatusText('Sending...');
 
     const { packet } = meshProtocol.createMessagePacket(peer.id, payload);
 
@@ -98,8 +100,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ peer, onBack, isEmbedded
         </span>
       </div>
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      {/* Messages Scroll Area (Container-scoped ref prevents page drag!) */}
+      <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((msg) => {
           const isMe = msg.senderId === settings.nodeId;
 
@@ -146,7 +148,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ peer, onBack, isEmbedded
             </div>
           );
         })}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Sending Status Progress Bar */}
@@ -157,7 +158,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ peer, onBack, isEmbedded
         </div>
       )}
 
-      {/* Quick Reactions & Input Field */}
+      {/* Input Field */}
       <div className="p-3 bg-[#1a1a1a] border-t-3 border-black space-y-2">
         <div className="flex items-center space-x-2 justify-end px-1">
           {['❤️', '🔥', '👏', '👍'].map((emoji) => (

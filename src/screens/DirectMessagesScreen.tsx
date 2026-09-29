@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Radio, Wifi, Zap, ChevronRight, RefreshCw, Globe, Sparkles } from 'lucide-react';
+import { Search, Radio, Wifi, Zap, ChevronRight, RefreshCw, Globe, Sparkles, Key } from 'lucide-react';
 import { db } from '../db/storage';
 import { User, Message } from '../db/schema';
-import { multiDeviceMeshTransport } from '../mesh/MultiDeviceMeshTransport';
+import { peerJSMeshDriver } from '../mesh/PeerJSMeshDriver';
 
 interface DirectMessagesScreenProps {
   onSelectPeer: (peer: User) => void;
@@ -13,13 +13,21 @@ export const DirectMessagesScreen: React.FC<DirectMessagesScreenProps> = ({ onSe
   const [users, setUsers] = useState<User[]>(db.getUsers());
   const [messages, setMessages] = useState<Message[]>(db.getMessages());
   const [searchQuery, setSearchQuery] = useState('');
+  const [roomInput, setRoomInput] = useState(peerJSMeshDriver.getRoomCode());
+  const [activeRoom, setActiveRoom] = useState(peerJSMeshDriver.getRoomCode());
 
   useEffect(() => {
-    const unsub = db.subscribe(() => {
+    const unsubDb = db.subscribe(() => {
       setUsers(db.getUsers());
       setMessages(db.getMessages());
     });
-    return () => unsub();
+    const unsubPeerJS = peerJSMeshDriver.subscribe(() => {
+      setActiveRoom(peerJSMeshDriver.getRoomCode());
+    });
+    return () => {
+      unsubDb();
+      unsubPeerJS();
+    };
   }, []);
 
   const filteredUsers = users.filter(
@@ -43,35 +51,49 @@ export const DirectMessagesScreen: React.FC<DirectMessagesScreenProps> = ({ onSe
     return `${Math.floor(diffHours / 24)}d`;
   };
 
-  const handle1ClickAutoConnect = async () => {
-    await multiDeviceMeshTransport.autoConnectToMesh();
+  const handleJoinRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (roomInput.trim()) {
+      peerJSMeshDriver.initPeerJS(roomInput);
+    }
   };
 
   return (
     <div className="pb-24 pt-2 px-3 max-w-2xl mx-auto">
-      {/* 1-Click Auto Join Banner */}
-      <div className="mb-4 bg-[#00ff66] text-black border-4 border-black p-3.5 shadow-[5px_5px_0px_0px_#000000] flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-black text-[#00ff66] border-2 border-black flex items-center justify-center shrink-0">
-            <Globe className="w-6 h-6 stroke-[3px]" />
+      {/* Mesh Room Code Connector Banner */}
+      <div className="mb-4 bg-[#00ff66] text-black border-4 border-black p-3.5 shadow-[5px_5px_0px_0px_#000000]">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-black text-[#00ff66] border-2 border-black flex items-center justify-center shrink-0 font-black">
+              <Globe className="w-6 h-6 stroke-[3px]" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black uppercase">WebRTC P2P Room Connection</h3>
+              <p className="text-[11px] font-bold text-gray-900">
+                Type the same Mesh Room Code on 2+ devices to pair instantly
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xs font-black uppercase">Multi-Device P2P Mesh Engine</h3>
-            <p className="text-[11px] font-bold text-gray-900">
-              Connect 2, 5, 10+ devices automatically via BLE & Local DataChannels
-            </p>
-          </div>
-        </div>
 
-        <button
-          onClick={handle1ClickAutoConnect}
-          className="w-full sm:w-auto px-4 py-2 bg-[#ff007f] text-white border-3 border-black font-black text-xs uppercase shadow-[3px_3px_0px_0px_#000000] hover:bg-[#ffe600] hover:text-black transition-all active:translate-x-1 shrink-0"
-        >
-          Auto-Connect Mesh
-        </button>
+          <form onSubmit={handleJoinRoom} className="flex items-center space-x-1.5 w-full sm:w-auto">
+            <input
+              type="text"
+              value={roomInput}
+              onChange={(e) => setRoomInput(e.target.value)}
+              placeholder="ROOM CODE"
+              className="bg-white text-black font-extrabold text-xs px-3 py-2 border-3 border-black uppercase w-32 shadow-[2px_2px_0px_0px_#000000] focus:bg-[#ffe600] focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-[#ff007f] text-white border-3 border-black font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000000] hover:bg-[#ffe600] hover:text-black transition-transform active:translate-x-0.5"
+            >
+              Join Room
+            </button>
+          </form>
+        </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Input Bar */}
       <div className="mb-4">
         <div className="relative">
           <Search className="w-4 h-4 text-black absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[3px]" />
@@ -92,8 +114,8 @@ export const DirectMessagesScreen: React.FC<DirectMessagesScreenProps> = ({ onSe
             <Radio className="w-4 h-4 text-[#00ff66] animate-pulse stroke-[3px]" />
             Active Mesh Peers ({users.length})
           </span>
-          <span className="text-[10px] font-black bg-[#ff007f] text-white px-2 py-0.5 border border-black">
-            OFF-GRID P2P
+          <span className="text-[10px] font-black bg-[#ff007f] text-white px-2 py-0.5 border border-black uppercase">
+            ROOM: {activeRoom}
           </span>
         </div>
 
@@ -131,7 +153,7 @@ export const DirectMessagesScreen: React.FC<DirectMessagesScreenProps> = ({ onSe
         ) : (
           <div className="py-2 px-2 text-center text-xs font-bold text-gray-300 flex items-center justify-center space-x-2">
             <RefreshCw className="w-4 h-4 stroke-[3px] text-[#00ff66] animate-spin" />
-            <span>Multi-Device Beacon Active • Scanning BLE & Local Spectrum...</span>
+            <span>Scanning WebRTC DataChannels & BLE spectrum for peers...</span>
           </div>
         )}
       </div>
@@ -216,16 +238,10 @@ export const DirectMessagesScreen: React.FC<DirectMessagesScreenProps> = ({ onSe
             <div className="w-12 h-12 bg-[#00f0ff] text-black border-3 border-black mx-auto flex items-center justify-center shadow-[3px_3px_0px_0px_#000000]">
               <Sparkles className="w-6 h-6 stroke-[3px]" />
             </div>
-            <h3 className="text-sm font-black uppercase">Scanning for Nearby MESH Devices</h3>
+            <h3 className="text-sm font-black uppercase">No Peers Discovered In Room [{activeRoom}]</h3>
             <p className="text-xs font-bold text-gray-700 max-w-sm mx-auto">
-              When another phone or device running MESH comes in range, they will automatically pop up here!
+              Open MESH on another phone or laptop and enter room code <strong>{activeRoom}</strong> to pair instantly over WebRTC DataChannels!
             </p>
-            <button
-              onClick={handle1ClickAutoConnect}
-              className="px-4 py-2 bg-[#ff007f] text-white border-3 border-black font-black text-xs uppercase shadow-[3px_3px_0px_0px_#000000] hover:bg-[#ffe600] hover:text-black transition-transform active:translate-x-1"
-            >
-              Click to Auto-Join Mesh Now
-            </button>
           </div>
         )}
       </div>

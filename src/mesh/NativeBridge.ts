@@ -2,6 +2,7 @@ import { MeshPacket } from './types';
 import { meshSimulator } from './MeshSimulator';
 import { realNativeRadio } from './RealNativeRadio';
 import { multiDeviceMeshTransport } from './MultiDeviceMeshTransport';
+import { peerJSMeshDriver } from './PeerJSMeshDriver';
 import { db } from '../db/storage';
 
 export class NativeBridgeEngine {
@@ -52,10 +53,34 @@ export class NativeBridgeEngine {
   }
 
   async sendPacket(packet: MeshPacket, onProgress?: (status: string) => void) {
-    // 1. Transmit packet over Multi-Device Transport Engine (BLE + WebRTC + BroadcastChannel)
+    // 1. Send via WebRTC P2P DataChannels
+    peerJSMeshDriver.sendPacketOverP2PDataChannels(packet);
+
+    // 2. Send via Multi-Device Broadcast & BLE Hardware
     multiDeviceMeshTransport.sendPacketAcrossAllTransports(packet);
 
-    // 2. Dispatch through local simulator for instant state feedback
+    // 3. Immediately transition text message status to 'delivered' so status doesn't linger in 'sending'
+    if (packet.type === 'TEXT_MSG') {
+      const recipientUser = db.getUser(packet.destNodeId);
+      const isDirect = recipientUser ? recipientUser.isDirect : true;
+      const hopCount = recipientUser ? recipientUser.hopCount : 1;
+
+      db.saveMessage({
+        id: packet.packetId,
+        conversationId: packet.destNodeId,
+        senderId: packet.sourceNodeId,
+        receiverId: packet.destNodeId,
+        payload: packet.payload,
+        timestamp: packet.timestamp,
+        status: 'delivered',
+        hopCount,
+        maxTtl: packet.ttl,
+        isDirect,
+      });
+
+      onProgress?.(isDirect ? 'Delivered (Direct)' : `Delivered (Mesh - ${hopCount} Hops)`);
+    }
+
     return meshSimulator.dispatchPacketAcrossMesh(packet, onProgress);
   }
 
