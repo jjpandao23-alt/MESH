@@ -1,19 +1,24 @@
 import { User, Message, MeshRoute, NetworkLog, AppSettings } from './schema';
 
 const STORAGE_KEYS = {
-  USERS: 'anti_gravity_users_v1',
-  MESSAGES: 'anti_gravity_messages_v1',
-  ROUTES: 'anti_gravity_routes_v1',
-  LOGS: 'anti_gravity_logs_v1',
-  SETTINGS: 'anti_gravity_settings_v1',
+  USERS: 'anti_gravity_users_v2',
+  MESSAGES: 'anti_gravity_messages_v2',
+  ROUTES: 'anti_gravity_routes_v2',
+  LOGS: 'anti_gravity_logs_v2',
+  SETTINGS: 'anti_gravity_settings_v2',
 };
 
-// Initial Seed Data mirroring Instagram P2P Mesh
+// Local Node Config (Generates random unique Node ID per physical device)
+const getRandomNodeId = () => {
+  const hex = Math.random().toString(16).substring(2, 8);
+  return `node_mesh_${hex}`;
+};
+
 const DEFAULT_MY_NODE: AppSettings = {
-  nodeId: 'node_alpha_01',
-  nodeName: 'Nova Vance (You)',
-  nodeHandle: 'nova.mesh',
-  publicKey: 'pub_pk_88a9f41029c011e4',
+  nodeId: getRandomNodeId(),
+  nodeName: 'MESH User',
+  nodeHandle: 'mesh_user',
+  publicKey: `pub_pk_${Math.random().toString(36).substring(2, 12)}`,
   bleEnabled: true,
   wifiDirectEnabled: true,
   relayModeEnabled: true,
@@ -21,178 +26,17 @@ const DEFAULT_MY_NODE: AppSettings = {
   darkMode: true,
 };
 
-const INITIAL_USERS: User[] = [
-  {
-    id: 'node_beta_02',
-    name: 'Alex Rivera',
-    handle: 'alex_rivera',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-    publicKey: 'pub_pk_44b7e192',
-    isDirect: true,
-    hopCount: 1,
-    status: 'online',
-    rssi: -54,
-    lastSeen: Date.now() - 1000 * 30,
-    deviceType: 'Android',
-    bio: 'P2P explorer & off-grid hiker 🏔️',
-  },
-  {
-    id: 'node_gamma_03',
-    name: 'Sophia Chen',
-    handle: 'sophia.mesh',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-    publicKey: 'pub_pk_99c3a221',
-    isDirect: false, // Connected via Alex Rivera (2 hops)
-    hopCount: 2,
-    status: 'mesh',
-    rssi: -78,
-    lastSeen: Date.now() - 1000 * 60 * 2,
-    deviceType: 'iOS',
-    bio: 'Distributed systems & privacy advocate 🔒',
-  },
-  {
-    id: 'node_delta_04',
-    name: 'Marcus Vance',
-    handle: 'marcus_v',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-    publicKey: 'pub_pk_77d12f45',
-    isDirect: false, // Connected via Sophia -> Alex (3 hops)
-    hopCount: 3,
-    status: 'mesh',
-    rssi: -85,
-    lastSeen: Date.now() - 1000 * 60 * 8,
-    deviceType: 'Android',
-    bio: 'Emergency mesh operator 📡',
-  },
-  {
-    id: 'node_epsilon_05',
-    name: 'Elena Rostova',
-    handle: 'elena_r',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-    publicKey: 'pub_pk_33e99b01',
-    isDirect: true,
-    hopCount: 1,
-    status: 'online',
-    rssi: -48,
-    lastSeen: Date.now() - 1000 * 15,
-    deviceType: 'iOS',
-    bio: 'Drone photography & off-grid tech 🛸',
-  },
-];
-
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: 'msg_01',
-    conversationId: 'node_beta_02',
-    senderId: 'node_beta_02',
-    receiverId: 'node_alpha_01',
-    payload: 'Hey Nova! Mesh link signal is super crisp today (-54 dBm).',
-    timestamp: Date.now() - 1000 * 60 * 12,
-    status: 'delivered',
-    hopCount: 1,
-    maxTtl: 5,
-    isDirect: true,
-  },
-  {
-    id: 'msg_02',
-    conversationId: 'node_beta_02',
-    senderId: 'node_alpha_01',
-    receiverId: 'node_beta_02',
-    payload: 'Awesome! I can see Sophia is also connected through your relay node.',
-    timestamp: Date.now() - 1000 * 60 * 10,
-    status: 'delivered',
-    hopCount: 1,
-    maxTtl: 5,
-    isDirect: true,
-  },
-  {
-    id: 'msg_03',
-    conversationId: 'node_gamma_03',
-    senderId: 'node_gamma_03',
-    receiverId: 'node_alpha_01',
-    payload: 'Hello from 2 hops away! Alex bridged our BLE packets seamlessly.',
-    timestamp: Date.now() - 1000 * 60 * 5,
-    status: 'delivered',
-    hopCount: 2,
-    maxTtl: 5,
-    viaNodeId: 'node_beta_02',
-    isDirect: false,
-  },
-  {
-    id: 'msg_04',
-    conversationId: 'node_gamma_03',
-    senderId: 'node_alpha_01',
-    receiverId: 'node_gamma_03',
-    payload: 'Anti Gravity mesh routing is working! Flooding logic handled the hop.',
-    timestamp: Date.now() - 1000 * 60 * 2,
-    status: 'delivered',
-    hopCount: 2,
-    maxTtl: 5,
-    viaNodeId: 'node_beta_02',
-    isDirect: false,
-  }
-];
-
-const INITIAL_ROUTES: MeshRoute[] = [
-  {
-    id: 'route_1',
-    targetNodeId: 'node_beta_02',
-    nextHopNodeId: 'node_beta_02',
-    costHops: 1,
-    signalStrength: -54,
-    lastUpdated: Date.now(),
-  },
-  {
-    id: 'route_2',
-    targetNodeId: 'node_gamma_03',
-    nextHopNodeId: 'node_beta_02',
-    costHops: 2,
-    signalStrength: -78,
-    lastUpdated: Date.now(),
-  },
-  {
-    id: 'route_3',
-    targetNodeId: 'node_delta_04',
-    nextHopNodeId: 'node_gamma_03',
-    costHops: 3,
-    signalStrength: -85,
-    lastUpdated: Date.now(),
-  },
-  {
-    id: 'route_4',
-    targetNodeId: 'node_epsilon_05',
-    nextHopNodeId: 'node_epsilon_05',
-    costHops: 1,
-    signalStrength: -48,
-    lastUpdated: Date.now(),
-  },
-];
-
+const INITIAL_USERS: User[] = [];
+const INITIAL_MESSAGES: Message[] = [];
+const INITIAL_ROUTES: MeshRoute[] = [];
 const INITIAL_LOGS: NetworkLog[] = [
   {
-    id: 'log_01',
-    timestamp: Date.now() - 1000 * 60 * 15,
+    id: `log_init_${Date.now()}`,
+    timestamp: Date.now(),
     level: 'info',
-    action: 'BLE_ADVERTISE_START',
-    details: 'Broadcasting Anti Gravity BLE service UUID [0xFE99] on Node Alpha',
-  },
-  {
-    id: 'log_02',
-    timestamp: Date.now() - 1000 * 60 * 14,
-    level: 'success',
-    action: 'PEER_HANDSHAKE_DIRECT',
-    details: 'Direct P2P link established with Alex Rivera (node_beta_02) via Wi-Fi Direct',
-    nodeSource: 'node_beta_02',
-  },
-  {
-    id: 'log_03',
-    timestamp: Date.now() - 1000 * 60 * 8,
-    level: 'mesh',
-    action: 'MESH_PACKET_RELAY',
-    details: 'Discovered multi-hop peer Sophia Chen (node_gamma_03) via route [Alex -> Sophia]',
-    nodeSource: 'node_beta_02',
-    nodeDest: 'node_gamma_03',
-  },
+    action: 'MESH_ENGINE_STARTED',
+    details: 'Off-grid P2P mesh network engine initialized with clean state',
+  }
 ];
 
 type Listener = () => void;
@@ -332,7 +176,6 @@ class StorageEngine {
       timestamp: Date.now(),
     };
     logs.unshift(newLog);
-    // Keep max 100 logs
     if (logs.length > 100) logs.pop();
     localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
     this.notify();
@@ -340,10 +183,10 @@ class StorageEngine {
 
   resetAllData() {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_MY_NODE));
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(INITIAL_MESSAGES));
-    localStorage.setItem(STORAGE_KEYS.ROUTES, JSON.stringify(INITIAL_ROUTES));
-    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(INITIAL_LOGS));
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.ROUTES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify([]));
     this.notify();
   }
 }

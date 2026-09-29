@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Radio, Wifi, Zap, ChevronRight } from 'lucide-react';
+import { Search, Radio, Wifi, Zap, ChevronRight, RefreshCw, Radar } from 'lucide-react';
 import { db } from '../db/storage';
 import { User, Message } from '../db/schema';
 
@@ -70,36 +70,43 @@ export const DirectMessagesScreen: React.FC<DirectMessagesScreenProps> = ({ onSe
           </span>
         </div>
 
-        <div className="flex items-center space-x-3 overflow-x-auto no-scrollbar py-1">
-          {users.map((peer) => {
-            const isDirect = peer.isDirect;
-            return (
-              <button
-                key={peer.id}
-                onClick={() => onSelectPeer(peer)}
-                className="flex flex-col items-center space-y-1 shrink-0 group focus:outline-none"
-              >
-                <div
-                  className={`relative p-1 border-3 border-black shadow-[3px_3px_0px_0px_#000000] transition-transform group-hover:-translate-y-1 ${
-                    isDirect ? 'bg-[#00ff66]' : 'bg-[#ff007f]'
-                  }`}
+        {users.length > 0 ? (
+          <div className="flex items-center space-x-3 overflow-x-auto no-scrollbar py-1">
+            {users.map((peer) => {
+              const isDirect = peer.isDirect;
+              return (
+                <button
+                  key={peer.id}
+                  onClick={() => onSelectPeer(peer)}
+                  className="flex flex-col items-center space-y-1 shrink-0 group focus:outline-none"
                 >
-                  <img src={peer.avatar} alt={peer.name} className="w-12 h-12 object-cover border border-black" />
-                  <span
-                    className={`absolute -bottom-1 -right-1 text-[9px] font-black text-black px-1 border border-black ${
-                      isDirect ? 'bg-[#00ff66]' : 'bg-[#ffe600]'
+                  <div
+                    className={`relative p-1 border-3 border-black shadow-[3px_3px_0px_0px_#000000] transition-transform group-hover:-translate-y-1 ${
+                      isDirect ? 'bg-[#00ff66]' : 'bg-[#ff007f]'
                     }`}
                   >
-                    {isDirect ? '1H' : `${peer.hopCount}H`}
+                    <img src={peer.avatar} alt={peer.name} className="w-12 h-12 object-cover border border-black" />
+                    <span
+                      className={`absolute -bottom-1 -right-1 text-[9px] font-black text-black px-1 border border-black ${
+                        isDirect ? 'bg-[#00ff66]' : 'bg-[#ffe600]'
+                      }`}
+                    >
+                      {isDirect ? '1H' : `${peer.hopCount}H`}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black text-white max-w-[60px] truncate text-center uppercase">
+                    {peer.name.split(' ')[0]}
                   </span>
-                </div>
-                <span className="text-[10px] font-black text-white max-w-[60px] truncate text-center uppercase">
-                  {peer.name.split(' ')[0]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-3 px-2 text-center text-xs font-bold text-gray-300 flex items-center justify-center space-x-2">
+            <RefreshCw className="w-4 h-4 stroke-[3px] text-[#00ff66] animate-spin" />
+            <span>Broadcasting BLE Beacon & Scanning for Nearby Devices...</span>
+          </div>
+        )}
       </div>
 
       {/* Main Peer Conversation List */}
@@ -111,73 +118,89 @@ export const DirectMessagesScreen: React.FC<DirectMessagesScreenProps> = ({ onSe
           </span>
         </div>
 
-        {filteredUsers.map((peer) => {
-          const lastMsg = getLastMessage(peer.id);
-          const isDirect = peer.isDirect;
-          const isSelected = selectedPeerId === peer.id;
+        {filteredUsers.length > 0 ? (
+          filteredUsers.map((peer) => {
+            const lastMsg = getLastMessage(peer.id);
+            const isDirect = peer.isDirect;
+            const isSelected = selectedPeerId === peer.id;
 
-          return (
-            <div
-              key={peer.id}
-              onClick={() => onSelectPeer(peer)}
-              className={`flex items-center space-x-3 p-3.5 border-3 border-black cursor-pointer transition-all ${
-                isSelected
-                  ? 'bg-[#ffe600] text-black shadow-[6px_6px_0px_0px_#ff007f] translate-x-1'
-                  : 'bg-white hover:bg-gray-100 text-black shadow-[4px_4px_0px_0px_#000000] hover:-translate-y-0.5'
-              }`}
-            >
-              {/* Circular Avatar */}
+            return (
               <div
-                className={`relative p-1 border-3 border-black shrink-0 ${
-                  isDirect ? 'bg-[#00ff66]' : 'bg-[#ff007f]'
+                key={peer.id}
+                onClick={() => onSelectPeer(peer)}
+                className={`flex items-center space-x-3 p-3.5 border-3 border-black cursor-pointer transition-all ${
+                  isSelected
+                    ? 'bg-[#ffe600] text-black shadow-[6px_6px_0px_0px_#ff007f] translate-x-1'
+                    : 'bg-white hover:bg-gray-100 text-black shadow-[4px_4px_0px_0px_#000000] hover:-translate-y-0.5'
                 }`}
               >
-                <img src={peer.avatar} alt={peer.name} className="w-12 h-12 object-cover border border-black" />
-                {isDirect ? (
-                  <span className="absolute -bottom-1 -right-1 bg-[#00ff66] text-black p-0.5 border border-black">
-                    <Wifi className="w-3 h-3 stroke-[3px]" />
-                  </span>
-                ) : (
-                  <span className="absolute -bottom-1 -right-1 bg-[#ffe600] text-black text-[9px] font-black px-1 border border-black flex items-center">
-                    <Zap className="w-2.5 h-2.5 fill-black" />
-                    {peer.hopCount}H
-                  </span>
-                )}
-              </div>
-
-              {/* Info & Status */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase truncate">{peer.name}</h3>
-                  {lastMsg && (
-                    <span className="text-[10px] font-extrabold bg-black text-white px-1.5 py-0.5 border border-black">
-                      {formatTimestamp(lastMsg.timestamp)}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center space-x-1.5 mt-1">
+                {/* Circular Avatar */}
+                <div
+                  className={`relative p-1 border-3 border-black shrink-0 ${
+                    isDirect ? 'bg-[#00ff66]' : 'bg-[#ff007f]'
+                  }`}
+                >
+                  <img src={peer.avatar} alt={peer.name} className="w-12 h-12 object-cover border border-black" />
                   {isDirect ? (
-                    <span className="text-[9px] font-black uppercase bg-[#00ff66] text-black px-1.5 py-0.5 border border-black">
-                      Nearby (Direct)
+                    <span className="absolute -bottom-1 -right-1 bg-[#00ff66] text-black p-0.5 border border-black">
+                      <Wifi className="w-3 h-3 stroke-[3px]" />
                     </span>
                   ) : (
-                    <span className="text-[9px] font-black uppercase bg-[#ff007f] text-white px-1.5 py-0.5 border border-black">
-                      Mesh Node ({peer.hopCount} Hops)
+                    <span className="absolute -bottom-1 -right-1 bg-[#ffe600] text-black text-[9px] font-black px-1 border border-black flex items-center">
+                      <Zap className="w-2.5 h-2.5 fill-black" />
+                      {peer.hopCount}H
                     </span>
                   )}
-                  <span className="text-[10px] font-bold text-gray-700 truncate">@{peer.handle}</span>
                 </div>
 
-                <p className="text-xs font-bold text-gray-900 truncate mt-1">
-                  {lastMsg ? lastMsg.payload : peer.bio || 'Tap to start P2P chat'}
-                </p>
-              </div>
+                {/* Info & Status */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black uppercase truncate">{peer.name}</h3>
+                    {lastMsg && (
+                      <span className="text-[10px] font-extrabold bg-black text-white px-1.5 py-0.5 border border-black">
+                        {formatTimestamp(lastMsg.timestamp)}
+                      </span>
+                    )}
+                  </div>
 
-              <ChevronRight className="w-5 h-5 text-black stroke-[3px] shrink-0" />
+                  <div className="flex items-center space-x-1.5 mt-1">
+                    {isDirect ? (
+                      <span className="text-[9px] font-black uppercase bg-[#00ff66] text-black px-1.5 py-0.5 border border-black">
+                        Nearby (Direct)
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-black uppercase bg-[#ff007f] text-white px-1.5 py-0.5 border border-black">
+                        Mesh Node ({peer.hopCount} Hops)
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold text-gray-700 truncate">@{peer.handle}</span>
+                  </div>
+
+                  <p className="text-xs font-bold text-gray-900 truncate mt-1">
+                    {lastMsg ? lastMsg.payload : peer.bio || 'Tap to start P2P chat'}
+                  </p>
+                </div>
+
+                <ChevronRight className="w-5 h-5 text-black stroke-[3px] shrink-0" />
+              </div>
+            );
+          })
+        ) : (
+          <div className="p-6 bg-white text-black border-4 border-black text-center shadow-[6px_6px_0px_0px_#ffe600] space-y-3">
+            <div className="w-12 h-12 bg-[#00f0ff] text-black border-3 border-black mx-auto flex items-center justify-center shadow-[3px_3px_0px_0px_#000000]">
+              <Radar className="w-6 h-6 stroke-[3px]" />
             </div>
-          );
-        })}
+            <h3 className="text-sm font-black uppercase">No Nearby Mesh Peers Discovered Yet</h3>
+            <p className="text-xs font-bold text-gray-700 max-w-sm mx-auto">
+              Anti Gravity radio is actively scanning for other phones running MESH in range over 2.4GHz BLE & Wi-Fi Direct.
+            </p>
+            <div className="inline-flex items-center space-x-2 bg-[#ffe600] text-black text-[11px] font-black uppercase px-3 py-1 border-2 border-black">
+              <Radio className="w-3.5 h-3.5 stroke-[3px] text-black" />
+              <span>Beacon Radio Transmitting</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
