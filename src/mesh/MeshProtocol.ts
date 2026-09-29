@@ -55,6 +55,8 @@ export class MeshProtocol {
   }
 
   handleIncomingPacket(packet: MeshPacket, currentNodeId: string): { action: 'ACCEPTED' | 'RELAYED' | 'DROPPED'; packet: MeshPacket } {
+    const settings = db.getSettings();
+
     // 1. Loop Prevention: Drop if already seen
     if (this.seenPacketIds.has(packet.packetId)) {
       return { action: 'DROPPED', packet };
@@ -72,8 +74,8 @@ export class MeshProtocol {
       return { action: 'DROPPED', packet };
     }
 
-    // 3. Auto Register/Update Peer Discovery on any incoming packet (Handshake or Message)
-    if (packet.sourceNodeId && packet.sourceNodeId !== currentNodeId) {
+    // 3. Auto Register/Update Peer Discovery ONLY for external nodes (NEVER self)
+    if (packet.sourceNodeId && packet.sourceNodeId !== settings.nodeId && packet.sourceNodeId !== currentNodeId) {
       let extraData: any = {};
       try {
         if (packet.type === 'HANDSHAKE' && packet.payload) {
@@ -95,8 +97,8 @@ export class MeshProtocol {
       } else {
         db.saveUser({
           id: packet.sourceNodeId,
-          name: packet.senderName || `MESH User (${packet.sourceNodeId.substring(0, 4)})`,
-          handle: packet.senderHandle || `user_${packet.sourceNodeId.substring(0, 4)}`,
+          name: packet.senderName || `MESH Peer (${packet.sourceNodeId.substring(0, 4)})`,
+          handle: packet.senderHandle || `peer_${packet.sourceNodeId.substring(0, 4)}`,
           avatar: extraData.avatar || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80`,
           publicKey: extraData.publicKey || `pub_pk_${packet.sourceNodeId.substring(0, 6)}`,
           isDirect: calculatedHops === 1,
@@ -109,26 +111,27 @@ export class MeshProtocol {
         db.addLog({
           level: 'success',
           action: 'NEW_MESH_PEER_DISCOVERED',
-          details: `Automatically connected to new MESH user [${packet.senderName}] (${calculatedHops} Hops)`,
+          details: `Connected to MESH user [${packet.senderName}] (${calculatedHops} Hops)`,
           nodeSource: packet.sourceNodeId,
         });
       }
     }
 
-    // 4. Handle Broadcast / Destination Reached
+    // 4. Handle Text Message Delivery (ONLY for TEXT_MSG type)
     const isTargetForMe = packet.destNodeId === currentNodeId || packet.destNodeId === 'BROADCAST';
 
     if (isTargetForMe) {
       db.addLog({
         level: 'success',
         action: 'PACKET_DELIVERED',
-        details: `Packet ${packet.packetId.substring(0, 8)} (${packet.type}) received from [${packet.senderName}] (${packet.hopCount} Hops)`,
+        details: `Packet ${packet.packetId.substring(0, 8)} (${packet.type}) received from [${packet.senderName}]`,
         packetId: packet.packetId,
         nodeSource: packet.sourceNodeId,
         nodeDest: currentNodeId,
       });
 
-      if (packet.type === 'TEXT_MSG') {
+      // ONLY save to chat history if it is a TEXT_MSG (NEVER save HANDSHAKE JSON payloads as chat messages!)
+      if (packet.type === 'TEXT_MSG' && packet.sourceNodeId !== settings.nodeId) {
         const incomingMsg: Message = {
           id: packet.packetId,
           conversationId: packet.sourceNodeId,
@@ -155,13 +158,13 @@ export class MeshProtocol {
       db.addLog({
         level: 'warn',
         action: 'TTL_EXPIRED',
-        details: `Packet ${packet.packetId.substring(0, 8)} discarded: TTL reached 0 at hop count ${packet.hopCount}`,
+        details: `Packet ${packet.packetId.substring(0, 8)} discarded: TTL reached 0`,
         packetId: packet.packetId,
       });
       return { action: 'DROPPED', packet };
     }
 
-    // 6. Silent Multi-Hop Relay Forwarding across mesh network
+    // 6. Silent Relay Forwarding
     const relayedPacket: MeshPacket = {
       ...packet,
       ttl: packet.ttl - 1,
@@ -172,7 +175,7 @@ export class MeshProtocol {
     db.addLog({
       level: 'mesh',
       action: 'SILENT_RELAY_FORWARD',
-      details: `Node ${currentNodeId} silently relayed packet from ${packet.sourceNodeId} ➔ ${packet.destNodeId} (TTL: ${relayedPacket.ttl}, Hop: ${relayedPacket.hopCount})`,
+      details: `Node ${currentNodeId} silently relayed packet from ${packet.sourceNodeId} ➔ ${packet.destNodeId}`,
       packetId: packet.packetId,
       nodeSource: packet.sourceNodeId,
       nodeDest: packet.destNodeId,

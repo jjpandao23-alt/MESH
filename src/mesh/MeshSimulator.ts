@@ -7,7 +7,7 @@ export interface SimNode {
   name: string;
   handle: string;
   avatar: string;
-  x: number; // visual graph coordinates
+  x: number;
   y: number;
   battery: number;
   isRelayActive: boolean;
@@ -17,7 +17,7 @@ export interface SimNode {
 export interface SimLink {
   fromNodeId: string;
   toNodeId: string;
-  rssi: number; // dBm signal strength (-35 = strong, -85 = weak)
+  rssi: number;
   active: boolean;
 }
 
@@ -56,49 +56,12 @@ class MeshSimulatorEngine {
         isRelayActive: true,
         isOnline: true,
       },
-      {
-        id: 'node_gamma_03',
-        name: 'Sophia Chen',
-        handle: 'sophia.mesh',
-        avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-        x: 460,
-        y: 160,
-        battery: 76,
-        isRelayActive: true,
-        isOnline: true,
-      },
-      {
-        id: 'node_delta_04',
-        name: 'Marcus Vance',
-        handle: 'marcus_v',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-        x: 640,
-        y: 230,
-        battery: 62,
-        isRelayActive: true,
-        isOnline: true,
-      },
-      {
-        id: 'node_epsilon_05',
-        name: 'Elena Rostova',
-        handle: 'elena_r',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-        x: 180,
-        y: 300,
-        battery: 91,
-        isRelayActive: true,
-        isOnline: true,
-      },
     ];
 
     defaultNodes.forEach((node) => this.nodes.set(node.id, node));
 
     this.links = [
       { fromNodeId: 'node_alpha_01', toNodeId: 'node_beta_02', rssi: -54, active: true },
-      { fromNodeId: 'node_alpha_01', toNodeId: 'node_epsilon_05', rssi: -48, active: true },
-      { fromNodeId: 'node_beta_02', toNodeId: 'node_gamma_03', rssi: -68, active: true },
-      { fromNodeId: 'node_gamma_03', toNodeId: 'node_delta_04', rssi: -79, active: true },
-      { fromNodeId: 'node_epsilon_05', toNodeId: 'node_beta_02', rssi: -62, active: true },
     ];
   }
 
@@ -152,7 +115,7 @@ class MeshSimulatorEngine {
   }
 
   /**
-   * Broadcast a packet across simulated radio waves (BLE / Wi-Fi Direct) with multi-stage hop animation
+   * Broadcast a packet across radio waves (BLE / Wi-Fi Direct)
    */
   async dispatchPacketAcrossMesh(packet: MeshPacket, onProgress?: (status: string) => void) {
     this.activePacketsInFlight.push(packet);
@@ -161,69 +124,46 @@ class MeshSimulatorEngine {
     db.addLog({
       level: 'info',
       action: 'RADIO_TRANSMIT_START',
-      details: `Node ${packet.sourceNodeId} transmitting BLE advertisement packet target ➔ ${packet.destNodeId}`,
+      details: `Radio packet ${packet.packetId.substring(0, 8)} (${packet.type}) transmitted`,
       packetId: packet.packetId,
       nodeSource: packet.sourceNodeId,
       nodeDest: packet.destNodeId,
     });
 
-    // Save initial status 'sending'
-    db.saveMessage({
-      id: packet.packetId,
-      conversationId: packet.destNodeId,
-      senderId: packet.sourceNodeId,
-      receiverId: packet.destNodeId,
-      payload: packet.payload,
-      timestamp: packet.timestamp,
-      status: 'sending',
-      hopCount: 0,
-      maxTtl: packet.ttl,
-      isDirect: false,
-    });
-
-    // Determine path through simulator topology
-    const neighborsOfSource = this.getNeighbors(packet.sourceNodeId);
-    const isDirectNeighbor = neighborsOfSource.includes(packet.destNodeId);
-
-    if (isDirectNeighbor) {
-      // 1 Hop direct connection delay
-      await new Promise((res) => setTimeout(res, 600));
-      onProgress?.('Hopping (1/1)...');
-
-      meshProtocol.handleIncomingPacket(
-        {
-          ...packet,
-          hopCount: 1,
-          path: [packet.sourceNodeId, packet.destNodeId],
-        },
-        packet.destNodeId
-      );
-
-      db.updateMessageStatus(packet.packetId, 'delivered', {
-        hopCount: 1,
-        isDirect: true,
+    // ONLY save to chat messages DB if it is a TEXT_MSG (NEVER save HANDSHAKE beacon pings as chat messages!)
+    if (packet.type === 'TEXT_MSG') {
+      db.saveMessage({
+        id: packet.packetId,
+        conversationId: packet.destNodeId,
+        senderId: packet.sourceNodeId,
+        receiverId: packet.destNodeId,
+        payload: packet.payload,
+        timestamp: packet.timestamp,
+        status: 'sending',
+        hopCount: 0,
+        maxTtl: packet.ttl,
+        isDirect: false,
       });
-    } else {
-      // Multi-hop relay path simulation (e.g. Node A -> Node B -> Node C)
-      await new Promise((res) => setTimeout(res, 500));
-      db.updateMessageStatus(packet.packetId, 'hopping', { hopCount: 1 });
-      onProgress?.('Hopping (1/2)...');
 
-      // Intermediary Relay step (Node B)
-      const intermediateNodeId = 'node_beta_02';
-      const relayResult = meshProtocol.handleIncomingPacket(packet, intermediateNodeId);
+      const neighborsOfSource = this.getNeighbors(packet.sourceNodeId);
+      const isDirectNeighbor = neighborsOfSource.includes(packet.destNodeId);
 
-      if (relayResult.action === 'RELAYED') {
-        await new Promise((res) => setTimeout(res, 800));
-        onProgress?.('Hopping (2/2)...');
+      if (isDirectNeighbor) {
+        await new Promise((res) => setTimeout(res, 400));
+        onProgress?.('Hopping (1/1)...');
 
-        // Final Destination step (Node C)
-        meshProtocol.handleIncomingPacket(relayResult.packet, packet.destNodeId);
+        meshProtocol.handleIncomingPacket(
+          {
+            ...packet,
+            hopCount: 1,
+            path: [packet.sourceNodeId, packet.destNodeId],
+          },
+          packet.destNodeId
+        );
 
         db.updateMessageStatus(packet.packetId, 'delivered', {
-          hopCount: relayResult.packet.hopCount,
-          viaNodeId: intermediateNodeId,
-          isDirect: false,
+          hopCount: 1,
+          isDirect: true,
         });
       }
     }

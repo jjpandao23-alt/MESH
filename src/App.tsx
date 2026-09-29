@@ -26,13 +26,6 @@ export function App() {
     };
   }, []);
 
-  // Default select first peer on desktop if none selected
-  useEffect(() => {
-    if (!selectedPeer && users.length > 0) {
-      setSelectedPeer(users[0]);
-    }
-  }, [users]);
-
   const handleSelectPeer = (peer: User) => {
     setSelectedPeer(peer);
   };
