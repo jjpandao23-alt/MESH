@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Compass, RefreshCw } from 'lucide-react';
+import { Compass, RefreshCw, Bluetooth, ShieldCheck } from 'lucide-react';
 import { db } from '../db/storage';
 import { User } from '../db/schema';
 import { nativeBridge } from '../mesh/NativeBridge';
+import { webBluetoothRadio } from '../mesh/WebBluetoothRadio';
 
 interface RadarScreenProps {
   onSelectPeer: (peer: User) => void;
@@ -11,6 +12,7 @@ interface RadarScreenProps {
 export const RadarScreen: React.FC<RadarScreenProps> = ({ onSelectPeer }) => {
   const [users, setUsers] = useState<User[]>(db.getUsers());
   const [isScanning, setIsScanning] = useState(true);
+  const [bleConnected, setBleConnected] = useState(webBluetoothRadio.isHardwareConnected());
 
   useEffect(() => {
     const unsub = db.subscribe(() => setUsers(db.getUsers()));
@@ -24,6 +26,13 @@ export const RadarScreen: React.FC<RadarScreenProps> = ({ onSelectPeer }) => {
     } else {
       nativeBridge.startDiscovery();
       setIsScanning(true);
+    }
+  };
+
+  const handleRequestBluetooth = async () => {
+    const success = await webBluetoothRadio.requestWebBluetoothPermission();
+    if (success) {
+      setBleConnected(true);
     }
   };
 
@@ -47,6 +56,30 @@ export const RadarScreen: React.FC<RadarScreenProps> = ({ onSelectPeer }) => {
         >
           <RefreshCw className={`w-4 h-4 stroke-[3px] ${isScanning ? 'animate-spin' : ''}`} />
           <span>{isScanning ? 'Scanning...' : 'Start Scan'}</span>
+        </button>
+      </div>
+
+      {/* Explicit Browser Bluetooth Permission Request Button */}
+      <div className="mb-4 bg-[#ffe600] text-black border-4 border-black p-4 shadow-[6px_6px_0px_0px_#000000] flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-black text-[#ffe600] border-2 border-black flex items-center justify-center font-black">
+            <Bluetooth className="w-6 h-6 stroke-[3px]" />
+          </div>
+          <div>
+            <h3 className="text-xs font-black uppercase">Bluetooth Radio Permission</h3>
+            <p className="text-[11px] font-bold text-gray-900">
+              {bleConnected ? 'Bluetooth Hardware Connected & Active' : 'Click to prompt browser / OS for physical Bluetooth scanning'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleRequestBluetooth}
+          className={`px-4 py-2 border-3 border-black font-black text-xs uppercase shadow-[3px_3px_0px_0px_#000000] transition-all active:translate-x-1 ${
+            bleConnected ? 'bg-[#00ff66] text-black' : 'bg-[#ff007f] text-white hover:bg-[#00ff66] hover:text-black'
+          }`}
+        >
+          {bleConnected ? 'Bluetooth Active' : 'Pair Bluetooth Hardware'}
         </button>
       </div>
 
